@@ -5,9 +5,9 @@ import authSeller from '../middlewares/authSeller.js';
 
 const orderRouter = express.Router();
 
-orderRouter.post('/cod', checkJwt, placeOrderCOD)
+orderRouter.post('/cod', validateOrder, placeOrderCOD);
 orderRouter.get('/user', checkJwt, getUserOrders)
 orderRouter.get('/seller', authSeller, getAllOrders)
-orderRouter.post('/stripe', checkJwt, placeOrderStripe)
+orderRouter.post('/stripe', validateOrder, placeOrderStripe);
 
 export default orderRouter;

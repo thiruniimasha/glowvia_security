@@ -3,6 +3,7 @@ import Product from "../models/Product.js";
 import User from "../models/User.js";
 import Address from "../models/Address.js";
 import stripe from "stripe"
+import { body, validationResult } from 'express-validator';
 
 // Validate delivery date (no Sundays, not in past)
 const validateDeliveryDate = (deliveryDate) => {
@@ -23,14 +24,43 @@ const validateDeliveryDate = (deliveryDate) => {
     return { valid: true };
 };
 
+export const validateOrder = [
+    body('items').isArray({ min: 1 }).withMessage('Items required'),
+    body('items.*.productId').isMongoId().withMessage('Valid product ID required'),
+    body('items.*.quantity').isInt({ min: 1, max: 100 }).withMessage('Quantity 1-100'),
+    body('purchaseInfo.deliveryDate').isISO8601().withMessage('Valid date required'),
+    body('purchaseInfo.deliveryTime').isIn(['10 AM', '11 AM', '12 PM']).withMessage('Invalid time'),
+    body('purchaseInfo.username')
+        .trim()
+        .isLength({ min: 1, max: 100 })
+        .matches(/^[a-zA-Z\s]+$/)
+        .escape(),
+    body('purchaseInfo.deliveryLocation')
+        .trim()
+        .isLength({ min: 1, max: 100 })
+        .escape(),
+    body('purchaseInfo.message')
+        .optional()
+        .trim()
+        .isLength({ max: 500 })
+        .escape()
+];
+
 
 
 // place order COD : /api/order/cod
 export const placeOrderCOD = async (req, res) => {
     try {
-        console.log('📝 COD order endpoint hit');
-        console.log('Auth data:', req.auth);
-        console.log('User data:', req.user);
+
+        // Validate input first
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: "Validation failed",
+                errors: errors.array()
+            });
+        }
 
         const { items, address, purchaseInfo } = req.body;
 
@@ -145,7 +175,7 @@ export const placeOrderStripe = async (req, res) => {
 
         // Improved origin detection
         const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5173';
-        
+
         console.log('Request origin details:', {
             headerOrigin: req.headers.origin,
             headerReferer: req.headers.referer,
@@ -244,7 +274,7 @@ export const placeOrderStripe = async (req, res) => {
         })
 
         //create session
-         const session = await stripeInstance.checkout.sessions.create({
+        const session = await stripeInstance.checkout.sessions.create({
             line_items,
             mode: "payment",
             success_url: `${origin}/loader?next=my-orders`,

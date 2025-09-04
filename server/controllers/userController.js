@@ -1,5 +1,6 @@
 import axios from "axios";
 import User from "../models/User.js";
+import { body, validationResult } from 'express-validator';
 
 /**
  * Fetch Auth0 user info using access token
@@ -102,6 +103,27 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
+export const validateUserProfile = [
+  body('name')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Name must be 1-100 characters')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Name can only contain letters and spaces')
+    .escape(),
+  body('contactNumber')
+    .optional()
+    .isMobilePhone()
+    .withMessage('Invalid phone number'),
+  body('country')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Country can only contain letters and spaces')
+    .escape()
+];
+
 /**
  * @desc Update user profile
  * @route PUT /api/user/profile
@@ -109,11 +131,23 @@ export const getUserProfile = async (req, res) => {
  */
 export const updateUserProfile = async (req, res) => {
   try {
+
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array()
+      });
+    }
+
     if (!req.auth || !req.auth.sub) {
       return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
     const { name, contactNumber, country } = req.body;
+    
     if (!name || name.trim() === "") {
       return res.json({ success: false, message: "Name is required" });
     }
