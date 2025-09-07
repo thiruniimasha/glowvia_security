@@ -7,7 +7,7 @@ console.log('Auth0 Configuration:', {
   jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`
 });
 
-// Base check using Auth0 JWKS
+
 export const checkJwt = jwt({
   secret: jwksRsa.expressJwtSecret({
     cache: true,
@@ -18,17 +18,17 @@ export const checkJwt = jwt({
   audience: process.env.AUTH0_AUDIENCE,
   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   algorithms: ["RS256"],
-  requestProperty: 'auth', // decoded token goes into req.auth
+  requestProperty: 'auth', 
 });
 
-// Wrapper with error handling
+
 export const authMiddleware = (req, res, next) => {
-  console.log('🔐 Checking Auth0 token...');
+  console.log(' Checking Auth0 token...');
   console.log('Authorization header:', req.headers.authorization);
 
   checkJwt(req, res, (err) => {
     if (err) {
-      console.error('❌ JWT validation failed:', {
+      console.error(' JWT validation failed:', {
         name: err.name,
         message: err.message,
         code: err.code,
@@ -43,7 +43,7 @@ export const authMiddleware = (req, res, next) => {
       });
     }
 
-    console.log('✅ JWT valid. Decoded claims:', req.auth);
+    console.log(' JWT valid. Decoded claims:', req.auth);
     next();
   });
 };

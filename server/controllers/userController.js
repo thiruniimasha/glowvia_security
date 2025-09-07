@@ -1,6 +1,6 @@
 import axios from "axios";
 import User from "../models/User.js";
-import { body, validationResult } from 'express-validator';
+import { body, validationResult } from "express-validator";
 
 /**
  * Fetch Auth0 user info using access token
@@ -10,7 +10,45 @@ const getAuth0UserInfo = async (accessToken) => {
     `https://${process.env.AUTH0_DOMAIN}/userinfo`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
-  return resp.data; // { sub, email, name, picture, ... }
+  return resp.data; 
+};
+
+/**
+ * Safe function to find or create Auth0 user
+ */
+const findOrCreateUser = async (auth0Id, accessToken) => {
+  
+  let user = await User.findOne({ auth0Id });
+
+  if (user) return user;
+
+  
+  const userInfo = await getAuth0UserInfo(accessToken);
+  const email = userInfo.email || null;
+  const name = userInfo.name || "New User";
+
+  if (email) {
+    user = await User.findOne({ email });
+
+    if (user) {
+     
+      user.auth0Id = auth0Id;
+      user.authProvider = "auth0";
+      await user.save();
+      return user;
+    }
+  }
+
+  user = await User.create({
+    auth0Id,
+    authProvider: "auth0",
+    name,
+    email,
+    contactNumber: "",
+    country: "",
+  });
+
+  return user;
 };
 
 /**
@@ -20,33 +58,17 @@ const getAuth0UserInfo = async (accessToken) => {
  */
 export const isAuth = async (req, res) => {
   try {
-    
-    if (!req.auth.sub) {
-      console.log('No auth data found');
+    if (!req.auth?.sub) {
       return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
     const auth0Id = req.auth.sub;
+    const accessToken = req.headers.authorization.split(" ")[1];
+    const user = await findOrCreateUser(auth0Id, accessToken);
 
-    // Check if user exists
-    let user = await User.findOne({ auth0Id }).select("-password");
-
-    // Auto-create user if not found
-    if (!user) {
-      const accessToken = req.headers.authorization.split(" ")[1]; // remove "Bearer "
-      const userInfo = await getAuth0UserInfo(accessToken);
-
-      user = await User.create({
-        auth0Id,
-        authProvider: "auth0",
-        name: userInfo.name || "New User",
-        email: userInfo.email,
-      });
-    }
-
-    return res.json({ success: true, user });
+    return res.json({ success: true, user: user.toObject({ getters: true, versionKey: false }) });
   } catch (error) {
-    console.error(error.message);
+    console.error("isAuth error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -58,34 +80,14 @@ export const isAuth = async (req, res) => {
  */
 export const getUserProfile = async (req, res) => {
   try {
-    
-    // Check for valid Auth0 ID
     if (!req.auth?.sub) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Authentication required",
-        error: "missing_auth_id"
-      });
+      return res.status(401).json({ success: false, message: "Authentication required" });
     }
 
     const auth0Id = req.auth.sub;
-    let user = await User.findOne({ auth0Id }).select("-password");
+    const accessToken = req.headers.authorization.split(" ")[1];
 
-    // Auto-create if not found
-    if (!user) {
-      // Fixed: Extract token from Authorization header correctly
-      const accessToken = req.headers.authorization.split(" ")[1]; // remove "Bearer "
-      const userInfo = await getAuth0UserInfo(accessToken);
-      
-      user = await User.create({
-        auth0Id,
-        authProvider: "auth0",
-        name: userInfo.name || "New User",
-        email: userInfo.email,
-        contactNumber: "",
-        country: ""
-      });
-    }
+    const user = await findOrCreateUser(auth0Id, accessToken);
 
     return res.json({
       success: true,
@@ -94,34 +96,37 @@ export const getUserProfile = async (req, res) => {
         email: user.email,
         contactNumber: user.contactNumber || "",
         country: user.country || "",
-        cartItems: user.cartItems || {}
+        cartItems: user.cartItems || [],
       },
     });
   } catch (error) {
-    console.error('getUserProfile error:', error.message);
+    console.error("getUserProfile error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
+/**
+ * Validation middleware for updating profile
+ */
 export const validateUserProfile = [
-  body('name')
+  body("name")
     .trim()
     .isLength({ min: 1, max: 100 })
-    .withMessage('Name must be 1-100 characters')
+    .withMessage("Name must be 1-100 characters")
     .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('Name can only contain letters and spaces')
+    .withMessage("Name can only contain letters and spaces")
     .escape(),
-  body('contactNumber')
+  body("contactNumber")
     .optional()
     .isMobilePhone()
-    .withMessage('Invalid phone number'),
-  body('country')
+    .withMessage("Invalid phone number"),
+  body("country")
     .optional()
     .trim()
     .isLength({ max: 50 })
     .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('Country can only contain letters and spaces')
-    .escape()
+    .withMessage("Country can only contain letters and spaces")
+    .escape(),
 ];
 
 /**
@@ -131,26 +136,16 @@ export const validateUserProfile = [
  */
 export const updateUserProfile = async (req, res) => {
   try {
-
-    // Check validation results
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: "Validation failed", errors: errors.array() });
     }
 
-    if (!req.auth || !req.auth.sub) {
+    if (!req.auth?.sub) {
       return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
     const { name, contactNumber, country } = req.body;
-    
-    if (!name || name.trim() === "") {
-      return res.json({ success: false, message: "Name is required" });
-    }
 
     const updatedUser = await User.findOneAndUpdate(
       { auth0Id: req.auth.sub },
@@ -163,7 +158,7 @@ export const updateUserProfile = async (req, res) => {
     ).select("-password");
 
     if (!updatedUser) {
-      return res.json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     return res.json({
@@ -177,7 +172,7 @@ export const updateUserProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('updateUserProfile error:', error.message);
+    console.error("updateUserProfile error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 };

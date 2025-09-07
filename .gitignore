@@ -2,4 +2,7 @@
 node_modules
 
 # environment variables
-.env
+server/.env
+client/.env
+
+server/certs

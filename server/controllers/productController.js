@@ -54,15 +54,44 @@ export const productById = async (req , res) => {
 }
 
 //Change Product inStock : /api/product/stock
-export const changeStock = async (req , res) => {
-    try{
-        const { id, inStock } = req.body
-        await Product.findByIdAndUpdate(id,{inStock})
-        res.json({success: true, message: "Stock updated" })
 
-    }catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message})
+
+export const changeStock = async (req, res) => {
+  try {
+    const { id, inStock } = req.body;
+
+    if (!id || typeof inStock !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid input: must provide product ID and inStock as boolean",
+      });
     }
 
-}
+    
+    if (!req.seller || req.seller.role !== "seller") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: you are not allowed to update stock",
+      });
+    }
+
+    const updated = await Product.findByIdAndUpdate(
+      id,
+      { inStock },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    res.json({ success: true, message: "Stock updated", product: updated });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+

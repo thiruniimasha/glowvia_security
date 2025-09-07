@@ -6,25 +6,25 @@ import { assets } from '../../assets/assets'
 const Orders = () => {
     const { currency, axios } = useAppContext()
     const [orders, setOrders] = useState([])
-    const [filter, setFilter] = useState('all') // all, upcoming, past
-    const [sortBy, setSortBy] = useState('newest') // newest, oldest, delivery_date
+    const [filter, setFilter] = useState('all') 
+    const [sortBy, setSortBy] = useState('newest')
 
     const fetchOrders = async () => {
-        try{
-           
-            console.log('Fetching seller orders...'); 
-            const {data} = await axios.get('/api/order/seller');
-             console.log('Seller orders response:', data);
-            if(data.success){
+        try {
+
+            console.log('Fetching seller orders...');
+            const { data } = await axios.get('/api/order/seller');
+            console.log('Seller orders response:', data);
+            if (data.success) {
                 setOrders(data.orders)
-               
-            }else {
+
+            } else {
                 toast.error(data.message)
             }
 
-        } catch (error){
-             console.error('Fetch orders error:', error);
-             toast.error(error.message)
+        } catch (error) {
+            console.error('Fetch orders error:', error);
+            toast.error(error.message)
 
         }
     };
@@ -67,9 +67,15 @@ const Orders = () => {
     const filteredAndSortedOrders = orders
         .filter(order => {
             if (filter === 'all') return true
-            if (filter === 'upcoming') return isUpcomingDelivery(order.purchaseInfo?.deliveryDate)
-            if (filter === 'past') return !isUpcomingDelivery(order.purchaseInfo?.deliveryDate) && order.status !== 'Delivered'
-            if (filter === 'delivered') return order.status === 'Delivered'
+            if (filter === 'upcoming')
+                return isUpcomingDelivery(order.purchaseInfo?.deliveryDate) && order.status !== 'Cancelled';
+
+            if (filter === 'past')
+                return !isUpcomingDelivery(order.purchaseInfo?.deliveryDate) && order.status !== 'Delivered' && order.status !== 'Cancelled';
+
+            if (filter === 'delivered') return order.status === 'Delivered';
+            if (filter === 'cancelled') return order.status === 'Cancelled';
+
             return true
         })
         .sort((a, b) => {
@@ -94,10 +100,10 @@ const Orders = () => {
     }
 
 
-    
+
 
     return (
-         <div className='no-scrollbar flex-1 h-[95vh] overflow-y-scroll'>
+        <div className='no-scrollbar flex-1 h-[95vh] overflow-y-scroll'>
             <div className="md:p-10 p-4 space-y-6">
                 {/* Header with filters */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -105,11 +111,11 @@ const Orders = () => {
                         <h2 className="text-2xl font-bold text-gray-800">Orders Management</h2>
                         <p className="text-gray-600">View all purchase information and delivery details</p>
                     </div>
-                    
+
                     {/* Filter and Sort Controls */}
                     <div className="flex flex-col sm:flex-row gap-3">
-                        <select 
-                            value={filter} 
+                        <select
+                            value={filter}
                             onChange={(e) => setFilter(e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         >
@@ -117,10 +123,14 @@ const Orders = () => {
                             <option value="upcoming">Upcoming Deliveries ({orders.filter(o => isUpcomingDelivery(o.purchaseInfo?.deliveryDate)).length})</option>
                             <option value="past">Past Deliveries ({orders.filter(o => !isUpcomingDelivery(o.purchaseInfo?.deliveryDate) && o.status !== 'Delivered').length})</option>
                             <option value="delivered">Delivered ({orders.filter(o => o.status === 'Delivered').length})</option>
+                            <option value="cancelled">
+                                Cancelled ({orders.filter(o => o.status === 'Cancelled').length})
+                            </option>
+
                         </select>
-                        
-                        <select 
-                            value={sortBy} 
+
+                        <select
+                            value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         >
@@ -152,24 +162,22 @@ const Orders = () => {
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 {/* Status Badges */}
                                 <div className="flex gap-2 mt-3 lg:mt-0">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                        order.status === 'Order Placed' ? 'bg-blue-100 text-blue-800' :
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${order.status === 'Order Placed' ? 'bg-blue-100 text-blue-800' :
                                         order.status === 'Shipped' ? 'bg-yellow-100 text-yellow-800' :
-                                        order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
+                                            order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                                'bg-gray-100 text-gray-800'
+                                        }`}>
                                         {order.status}
                                     </span>
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(getDeliveryStatus(order.purchaseInfo?.deliveryDate, order.status))}`}>
-                                        {getDeliveryStatus(order.purchaseInfo?.deliveryDate, order.status) === 'upcoming' ? 'Upcoming' : 
-                                         getDeliveryStatus(order.purchaseInfo?.deliveryDate, order.status) === 'delivered' ? 'Delivered' : 'Past'}
+                                        {getDeliveryStatus(order.purchaseInfo?.deliveryDate, order.status) === 'upcoming' ? 'Upcoming' :
+                                            getDeliveryStatus(order.purchaseInfo?.deliveryDate, order.status) === 'delivered' ? 'Delivered' : 'Past'}
                                     </span>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                        order.isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                    }`}>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${order.isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                        }`}>
                                         {order.isPaid ? 'Paid' : 'Unpaid'}
                                     </span>
                                 </div>
@@ -190,13 +198,12 @@ const Orders = () => {
                                                 <p className="text-sm text-gray-700">{formatDate(order.purchaseInfo.orderDate)}</p>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="space-y-2">
                                             <div>
                                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Date</p>
-                                                <p className={`text-sm font-medium ${
-                                                    isUpcomingDelivery(order.purchaseInfo.deliveryDate) ? 'text-blue-600' : 'text-gray-700'
-                                                }`}>
+                                                <p className={`text-sm font-medium ${isUpcomingDelivery(order.purchaseInfo.deliveryDate) ? 'text-blue-600' : 'text-gray-700'
+                                                    }`}>
                                                     {formatDate(order.purchaseInfo.deliveryDate)}
                                                 </p>
                                             </div>
@@ -205,7 +212,7 @@ const Orders = () => {
                                                 <p className="text-sm text-gray-700">{order.purchaseInfo.deliveryTime}</p>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="space-y-2">
                                             <div>
                                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Location</p>
@@ -217,7 +224,7 @@ const Orders = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     {order.purchaseInfo.message && (
                                         <div className="mt-4 pt-4 border-t border-gray-200">
                                             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Special Instructions</p>
@@ -235,9 +242,9 @@ const Orders = () => {
                                     <div className="space-y-2">
                                         {order.items.map((item, itemIndex) => (
                                             <div key={itemIndex} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-lg">
-                                                <img 
-                                                    src={item.image} 
-                                                    alt={item.name} 
+                                                <img
+                                                    src={item.image}
+                                                    alt={item.name}
                                                     className="w-12 h-12 object-cover rounded-md"
                                                 />
                                                 <div className="flex-1">
