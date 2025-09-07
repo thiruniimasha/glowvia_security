@@ -108,10 +108,55 @@ npm run dev
 
 ---
 
-## 🗃️ Database Setup
+## 🗃️ Database & Seed
+Collections are created by Mongoose automatically. If your marker requests a DB creation script, include this `scripts/seed.mjs` in the repo and run with `node` or `mongosh`.
 
-This app uses MongoDB.
-Collections are auto-created by Mongoose.
+**scripts/seed.mjs** (example):
+```js
+// Glowvia Database Creation Script
+// Run this in MongoDB shell or use a GUI like MongoDB Compass
+
+use glowviaDB; // Create a new database named glowviaDB
+
+// Create Users collection with a sample user
+db.createCollection("users");
+db.users.insertOne({
+    username: "testuser",
+    name: "Hiruni Imasha",
+    email: "hiruni@example.com",
+    password: "hashed_password_here", // replace with hashed password
+    createdAt: new Date()
+});
+
+// Create Products collection
+db.createCollection("products");
+db.products.insertMany([
+    { name: "Product 1", price: 1000, stock: 10 },
+    { name: "Product 2", price: 1500, stock: 5 }
+]);
+
+// Create Orders collection
+db.createCollection("orders");
+db.orders.insertOne({
+    userId: "replace_with_user_id",
+    products: [
+        { productId: "replace_with_product_id", quantity: 1 }
+    ],
+    total: 1000,
+    orderDate: new Date(),
+    status: "Pending"
+});
+
+print("Database setup complete!");
+
+```
+
+Run:
+```bash
+cd server
+node scripts/seed.mjs
+```
+
 
 ---
 
