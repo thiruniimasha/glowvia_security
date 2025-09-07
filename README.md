@@ -163,4 +163,4 @@ Collections are auto-created by Mongoose.
 ## ✍️ Author
 - **SID:** SE2021053
 - **Name:** T. H. Imasha 
-- **Blog:** https://medium.com/@yourhandle/your-post-slug
+- **Blog:** [https://medium.com/@yourhandle/your-post-slug](https://medium.com/@t.hiruniimasha2002/building-my-safe-e-commerce-app-oidc-and-owasp-takeaways-c8ef79679772)
