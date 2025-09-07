@@ -28,6 +28,17 @@ const Cart = () => {
 
     const deliveryTimes = ["10 AM", "11 AM", "12 PM"]
 
+    // Compute a min date string (YYYY-MM-DD) — skip today if it's Sunday
+    const getMinDeliveryDate = () => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+        return d.toISOString().split('T')[0];
+    };
+
+    const minDate = getMinDeliveryDate();
+
+
     // Helper function to make authenticated API calls
     const makeAuthenticatedRequest = async (url, options = {}) => {
         try {
@@ -35,14 +46,12 @@ const Cart = () => {
                 throw new Error('User not authenticated');
             }
 
-            console.log(`Making authenticated request to: ${url}`);
-            
+
             const token = await getAccessTokenSilently({
                 audience: import.meta.env.VITE_AUTH0_AUDIENCE,
                 scope: 'openid profile email'
             });
 
-            console.log('Token obtained for request:', !!token);
 
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}`, {
                 ...options,
@@ -50,7 +59,7 @@ const Cart = () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                     ...options.headers
-                }
+                },
             });
 
             console.log(`Response status for ${url}:`, response.status);
@@ -61,17 +70,17 @@ const Cart = () => {
             return data;
         } catch (error) {
             console.error(`Error in authenticated request to ${url}:`, error);
-            
+
             if (error.error === 'login_required' || error.error === 'consent_required') {
                 console.log('Login required, redirecting...');
                 loginWithRedirect();
             }
-            
+
             throw error;
         }
     };
 
-    // Debug auth state
+    
     useEffect(() => {
         console.log('Cart component - Auth state:', {
             isAuthenticated,
@@ -98,7 +107,7 @@ const Cart = () => {
         try {
             console.log('getUserAddress called');
             const data = await makeAuthenticatedRequest('/api/address/get');
-            
+
             if (data.success) {
                 setAddresses(data.addresses || [])
                 if (data.addresses && data.addresses.length > 0) {
@@ -182,7 +191,6 @@ const Cart = () => {
             }
 
             const orderData = {
-                userId: auth0User.sub,
                 items: orderItems,
                 address: selectedAddress._id,
                 purchaseInfo
@@ -219,19 +227,12 @@ const Cart = () => {
         }
     }
 
-    const getMinDate = () => {
-        const tomorrow = new Date()
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        return tomorrow.toISOString().split('T')[0]
-    }
-
     useEffect(() => {
         if (products.length > 0 && cartItems) {
             getCart()
         }
     }, [products, cartItems])
 
-    // Wait for Auth0 to fully load before fetching addresses
     useEffect(() => {
         if (isAuthenticated && auth0User && !userLoading) {
             console.log('Auth ready, fetching addresses...');
@@ -255,7 +256,7 @@ const Cart = () => {
             <div className="flex justify-center items-center mt-16 min-h-[400px]">
                 <div className="text-center">
                     <p className="text-gray-500 mb-4">Please log in to view your cart</p>
-                    <button 
+                    <button
                         onClick={() => loginWithRedirect()}
                         className="bg-primary text-white px-6 py-2 rounded hover:bg-primary-dull transition"
                     >
@@ -336,12 +337,18 @@ const Cart = () => {
                         <label className="block text-sm text-gray-600 mb-1">Delivery Date *</label>
                         <input
                             type="date"
+                            min={minDate}
                             value={deliveryDate}
-                            onChange={(e) => setDeliveryDate(e.target.value)}
-                            min={getMinDate()}
-                            className="w-full border border-gray-300 bg-white px-3 py-2 rounded outline-none focus:border-primary"
-                            required
+                            onChange={(e) => {
+                                const sel = new Date(e.target.value);
+                                if (sel.getDay() === 0) {
+                                    toast.error('Delivery not available on Sundays');
+                                    return;
+                                }
+                                setDeliveryDate(e.target.value);
+                            }}
                         />
+
                         <p className="text-xs text-gray-500 mt-1">Note: Delivery not available on Sundays</p>
                     </div>
 
@@ -377,8 +384,8 @@ const Cart = () => {
                         <p className="text-sm font-medium uppercase">Delivery Address</p>
                         <div className="relative flex justify-between items-start mt-2">
                             <p className="text-gray-500">
-                                {selectedAddress ? 
-                                    `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.country}` : 
+                                {selectedAddress ?
+                                    `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.country}` :
                                     "No address found"
                                 }
                             </p>
@@ -447,13 +454,12 @@ const Cart = () => {
                 <button
                     onClick={placeOrder}
                     disabled={userLoading}
-                    className={`w-full py-3 mt-6 cursor-pointer font-medium transition ${
-                        userLoading 
-                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                            : 'bg-primary text-white hover:bg-primary-dull'
-                    }`}
+                    className={`w-full py-3 mt-6 cursor-pointer font-medium transition ${userLoading
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        : 'bg-primary text-white hover:bg-primary-dull'
+                        }`}
                 >
-                    {userLoading ? 'Loading...' : (paymentOption === "COD" ? "Place Order" : "Proceed to Checkout")}
+                    {paymentOption === "COD" ? "Place Order" : "Proceed to Checkout"}
                 </button>
             </div>
         </div>
@@ -463,7 +469,7 @@ const Cart = () => {
                 <p className="text-gray-500 mb-4">
                     {!isAuthenticated ? 'Please log in to view your cart' : 'Your cart is empty'}
                 </p>
-                <button 
+                <button
                     onClick={() => navigate(!isAuthenticated ? '/login' : '/products')}
                     className="bg-primary text-white px-6 py-2 rounded hover:bg-primary-dull transition"
                 >

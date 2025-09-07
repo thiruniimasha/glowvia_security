@@ -26,7 +26,6 @@ export const addAddress = async (req, res) => {
 }
 
 //get address : /api/address/get
-// Updated address controller
 export const getAddress = async (req, res) => {
     try {
         const auth0Id = req.auth?.sub;
@@ -34,13 +33,11 @@ export const getAddress = async (req, res) => {
             return res.json({ success: false, message: "User ID not found in token" });
         }
 
-        // First find the user by their Auth0 ID
         const user = await User.findOne({ auth0Id });
         if (!user) {
             return res.json({ success: false, message: "User not found" });
         }
 
-        // Then find addresses using the user's MongoDB _id
         const addresses = await Address.find({ userId: user._id });
         res.json({ success: true, addresses });
     } catch (error) {

@@ -33,6 +33,8 @@ const AddAddress = () => {
         phone: '',
     })
 
+    const [csrfToken, setCsrfToken] = useState('')
+
     const handleChange = (e) => {
         const { name, value } = e.target;
 
@@ -43,28 +45,45 @@ const AddAddress = () => {
         }))
     }
 
+    // Fetch CSRF token on mount
+    useEffect(() => {
+        const getCsrfToken = async () => {
+            try {
+                const { data } = await axios.get('/api/csrf-token', { withCredentials: true })
+                setCsrfToken(data.csrfToken)
+            } catch (err) {
+                console.error('Failed to fetch CSRF token:', err)
+            }
+        }
+        getCsrfToken()
+    }, [])
+
     const onSubmitHandler = async (e) => {
         e.preventDefault();
         try {
-            const { data } = await axios.post('/api/address/add', {address});
+            const { data } = await axios.post(
+                '/api/address/add',
+                 { address },
+                 
+                );
             if (data.success) {
                 toast.success(data.message)
                 navigate('/cart')
-            }else {
+            } else {
                 toast.error(data.message)
             }
 
-        } catch (error){
+        } catch (error) {
             toast.error(error.message)
 
         }
     }
 
-    useEffect ( ()=>{
-        if(!user) {
+    useEffect(() => {
+        if (!user) {
             navigate('/cart')
         }
-    },[])
+    }, [])
 
     return (
         <div className='mt-16 pb-16'>

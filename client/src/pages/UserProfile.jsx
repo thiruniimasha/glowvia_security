@@ -64,7 +64,7 @@ const UserProfile = () => {
 
     const handleCancel = () => {
         setIsEditing(false);
-        setProfileData(originalData); // Reset to original data
+        setProfileData(originalData); 
     };
 
     const handleSave = async (e) => {
@@ -77,7 +77,6 @@ const UserProfile = () => {
 
         try {
             setUpdating(true);
-            // Get the token here as well
             const token = await getAccessTokenSilently();
             const { data } = await axios.put('/api/user/profile', {
                 name: profileData.name.trim(),
@@ -92,11 +91,8 @@ const UserProfile = () => {
             if (data.success) {
                 toast.success('Profile updated successfully');
                 setIsEditing(false);
-                setOriginalData(profileData); // Update original data
-                // Update user in context if needed
-                if (data.user) {
-                    // You might want to update the user context here
-                }
+                setOriginalData(profileData); 
+                
             } else {
                 toast.error(data.message || 'Failed to update profile');
             }
@@ -109,7 +105,7 @@ const UserProfile = () => {
     };
 
     if (!user) {
-        return null; // Will redirect in useEffect
+        return null;
     }
 
     if (loading) {

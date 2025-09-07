@@ -12,7 +12,7 @@ function AddProduct() {
     const [price, setPrice] = useState('');
     const [offerPrice, setOfferPrice] = useState('');
 
-    const {axios} = useAppContext()
+    const { axios } = useAppContext()
 
     const onSubmitHandler = async (event) => {
         try {
@@ -33,7 +33,7 @@ function AddProduct() {
             }
 
             const { data } = await axios.post('/api/product/add', formData)
-            if(data.success){
+            if (data.success) {
                 toast.success(data.message);
                 setName('');
                 setDescription('');
@@ -41,10 +41,10 @@ function AddProduct() {
                 setPrice('');
                 setOfferPrice('');
                 setFiles([])
-            }else{
+            } else {
                 toast.error(data.message)
             }
-        } catch (error){
+        } catch (error) {
             toast.error(error.message)
         }
     }
@@ -84,8 +84,10 @@ function AddProduct() {
                     <select onChange={(e) => setCategory(e.target.value)} value={category}
                         id="category" className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40">
                         <option value="">Select Category</option>
-                        {categories.map((item, index) => (
-                            <option value={item.path}>{item.path}</option>
+                        {categories.map((item) => (
+                            <option key={item.path} value={item.path}>
+                                {item.path}
+                            </option>
 
                         ))}
                     </select>

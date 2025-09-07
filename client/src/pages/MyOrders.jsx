@@ -62,7 +62,7 @@ const MyOrders = () => {
                     </div>
                     <h3 className="text-xl font-medium text-gray-900 mb-2">No orders yet</h3>
                     <p className="text-gray-600 mb-6">You haven't placed any orders yet.</p>
-                    <button 
+                    <button
                         onClick={() => navigate('/products')}
                         className="bg-primary text-white px-6 py-3 rounded-md hover:bg-primary-dull transition"
                     >
@@ -72,9 +72,14 @@ const MyOrders = () => {
             ) : (
                 <div className="space-y-6">
                     {orders.map((order) => (
-                        <OrderDetails key={order._id} order={order} />
+                        <OrderDetails
+                            key={order._id}
+                            order={order}
+                            refreshOrders={getUserOrders}
+                        />
                     ))}
                 </div>
+
             )}
         </div>
     )

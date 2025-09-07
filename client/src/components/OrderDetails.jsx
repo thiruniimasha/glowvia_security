@@ -1,8 +1,11 @@
 import React from 'react'
 import { useAppContext } from '../context/AppContext'
+import toast from 'react-hot-toast'
+import { useState } from 'react';
 
-const OrderDetails = ({ order }) => {
-    const { currency } = useAppContext()
+const OrderDetails = ({ order, refreshOrders }) => {
+    const { currency, axios, cancelOrder} = useAppContext();
+    const [isCancelling, setIsCancelling] = useState(false);
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -22,6 +25,25 @@ const OrderDetails = ({ order }) => {
         })
     }
 
+    const handleCancelOrder = async () => {
+        if (!window.confirm('Are you sure you want to cancel this order?')) return;
+
+        try {
+            setIsCancelling(true);
+            const { data } = await axios.put(`/api/order/cancel/${order._id}`);
+            if (data.success) {
+                toast.success('Order cancelled successfully');
+                refreshOrders(); // refresh the order list
+            } else {
+                toast.error(data.message || 'Failed to cancel order');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || error.message || 'Error cancelling order');
+        } finally {
+            setIsCancelling(false);
+        }
+    };
+
     return (
         <div className="border border-gray-200 p-6 rounded-lg mb-6 bg-white shadow-sm">
             {/* Order Header */}
@@ -33,17 +55,15 @@ const OrderDetails = ({ order }) => {
                     </p>
                 </div>
                 <div className="flex flex-col md:flex-row gap-2 mt-2 md:mt-0">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        order.status === 'Order Placed' ? 'bg-blue-100 text-blue-800' :
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${order.status === 'Order Placed' ? 'bg-blue-100 text-blue-800' :
                         order.status === 'Shipped' ? 'bg-yellow-100 text-yellow-800' :
-                        order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                    }`}>
+                            order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                        }`}>
                         {order.status}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        order.isPaid ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${order.isPaid ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                        }`}>
                         {order.isPaid ? 'Paid' : 'Pending Payment'}
                     </span>
                 </div>
@@ -80,9 +100,9 @@ const OrderDetails = ({ order }) => {
                 <div className="space-y-3">
                     {order.items.map((item, index) => (
                         <div key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                            <img 
-                                src={item.image} 
-                                alt={item.name} 
+                            <img
+                                src={item.image}
+                                alt={item.name}
                                 className="w-16 h-16 object-cover rounded-md"
                             />
                             <div className="flex-1">
@@ -122,7 +142,18 @@ const OrderDetails = ({ order }) => {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">*Includes 2% tax</p>
             </div>
+             {!order.isPaid && order.status === "Order Placed" && (
+                <button
+                    onClick={handleCancelOrder}
+                    className="px-6 py-2 bg-primary hover:bg-primary-dull mt-2 text-white rounded-md font-medium transition-all disabled:opacity-50"
+                >
+                    Cancel Order
+                </button>
+            )}
+
+           
         </div>
+        
     )
 }
 
